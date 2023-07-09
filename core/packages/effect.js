@@ -83,14 +83,21 @@ function computed(getter) {
   // 把 getter作为副作用函数，创建一个lazy的effect
   const effectFn = effect(getter, {
     lazy: true,
+    scheduler() {
+      dirty = true;
+      console.log("执行！");
+      trigger(obj, "value");
+    },
   });
 
   const obj = {
     // 当读取value时才执行effectFn
     get value() {
       if (dirty) {
+        console.log("重新计算了");
         value = effectFn();
         dirty = false;
+        track(obj, "value");
       }
       return value;
     },

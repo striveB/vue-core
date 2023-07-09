@@ -1,9 +1,12 @@
 import { effect, computed } from "./packages/effect.js";
 import { reactive } from "./packages/reactive.js";
 
-const data = { text: "hello world!", isOk: true, num: 1, num1: 1 };
+const data = { text: "hello world!", isOk: true, num: 1, num1: 2 };
 let obj = reactive(data);
-let val = computed(() => obj.num + obj.num1);
+let val = computed(() => {
+  console.log("计算了-", obj.num, obj.num1);
+  return obj.num + obj.num1;
+});
 console.log(val.value);
 console.log(val.value);
 // console.log(obj.num1);
@@ -11,9 +14,19 @@ console.log(val.value);
 //   // scheduler(fn) {
 //   //   setTimeout(() => {
 //   //     fn();
-//   //   }, 0);
+//   //   }, 1000);
 //   // },
-//   lazy: true,
+//   lazy: false,
 // });
 // let value = effectFn();
 // console.log(value);
+
+// setTimeout(() => {
+//   obj.num += 1;
+//   console.log(val.value);
+// }, 1000);
+
+effect(() => {
+  console.log("effect", val.value);
+});
+obj.num = 10;
