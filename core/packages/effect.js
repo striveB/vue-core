@@ -34,7 +34,7 @@ function cleanup(effectFn) {
 const bucket = new WeakMap();
 
 const track = function (target, key) {
-  // // 没有副作用函数时直接return
+  // 没有副作用函数时直接return
   if (!activeEffect) return;
   // 从桶中拿出当前对象对应的 map
   let depsMap = bucket.get(target);
@@ -105,4 +105,40 @@ function computed(getter) {
   };
   return obj;
 }
-export { effect, track, trigger, computed };
+
+function watch(source, callback) {
+  let getter;
+  if (typeof source === "function") {
+    getter = source;
+  } else {
+    getter = () => traverse(source);
+  }
+  let oldValue, newValue;
+  const effectFn = effect(() => getter(), {
+    lazy: true,
+    scheduler: () => {
+      // 调度器重执行effectFn得到的就是新值
+      newValue = effectFn();
+      callback(newValue, oldValue);
+      // 传递过去之后更新一下旧值
+      oldValue = newValue;
+    },
+  });
+  // 直接调用effectFn得到的就是旧值
+  oldValue = effectFn();
+}
+// watch 的读取操作会触发
+function traverse(value, seen = new Set()) {
+  // 如果要读取的是数据时原始数据，或者已经被读取过了，那什么都不做
+  if (typeof value !== "object" || value === null || seen.has(value)) return;
+  seen.add(value);
+  // 这里暂时不考虑数组等其他结构
+  // ...
+
+  // 如果value就是一个对象的话 那么我们可以使用for in来遍历对象的所有属性,并且递归调用traverse进行处理
+  for (const key in value) {
+    traverse(value[key], seen);
+  }
+  return value;
+}
+export { effect, track, trigger, computed, watch };
