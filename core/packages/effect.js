@@ -35,7 +35,7 @@ const bucket = new WeakMap();
 
 const track = function (target, key) {
   // // 没有副作用函数时直接return
-  if (!activeEffect) return target[key];
+  if (!activeEffect) return;
   // 从桶中拿出当前对象对应的 map
   let depsMap = bucket.get(target);
   window.bucket = bucket;
@@ -84,9 +84,10 @@ function computed(getter) {
   const effectFn = effect(getter, {
     lazy: true,
     scheduler() {
-      dirty = true;
-      console.log("执行！");
-      trigger(obj, "value");
+      if (!dirty) {
+        dirty = true;
+        trigger(obj, "value");
+      }
     },
   });
 
@@ -97,8 +98,8 @@ function computed(getter) {
         console.log("重新计算了");
         value = effectFn();
         dirty = false;
-        track(obj, "value");
       }
+      track(obj, "value");
       return value;
     },
   };
