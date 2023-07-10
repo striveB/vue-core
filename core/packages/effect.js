@@ -125,7 +125,15 @@ function watch(source, callback, options = {}) {
   };
   const effectFn = effect(() => getter(), {
     lazy: true,
-    scheduler: job,
+    scheduler: () => {
+      if (options.flush === "post") {
+        // 在调度函数中判断flush的值，如果是post的话，就将job放到微任务中执行，等待视图更新之后再执行
+        let p = Promise.resolve();
+        p.then(job);
+      } else {
+        job();
+      }
+    },
   });
 
   // 如果是立即执行的话，就直接调用job函数 第一次立即执行就没有了旧值一说了
