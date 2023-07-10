@@ -106,7 +106,7 @@ function computed(getter) {
   return obj;
 }
 
-function watch(source, callback) {
+function watch(source, callback, options = {}) {
   let getter;
   if (typeof source === "function") {
     getter = source;
@@ -114,18 +114,27 @@ function watch(source, callback) {
     getter = () => traverse(source);
   }
   let oldValue, newValue;
+
+  // 提取scheduler调度函数为一个独立的job函数
+  const job = () => {
+    // 调度器重执行effectFn得到的就是新值
+    newValue = effectFn();
+    callback(newValue, oldValue);
+    // 传递过去之后更新一下旧值
+    oldValue = newValue;
+  };
   const effectFn = effect(() => getter(), {
     lazy: true,
-    scheduler: () => {
-      // 调度器重执行effectFn得到的就是新值
-      newValue = effectFn();
-      callback(newValue, oldValue);
-      // 传递过去之后更新一下旧值
-      oldValue = newValue;
-    },
+    scheduler: job,
   });
-  // 直接调用effectFn得到的就是旧值
-  oldValue = effectFn();
+
+  // 如果是立即执行的话，就直接调用job函数 第一次立即执行就没有了旧值一说了
+  if (options.immediate) {
+    job();
+  } else {
+    // 直接调用effectFn得到的就是旧值
+    oldValue = effectFn();
+  }
 }
 // watch 的读取操作会触发
 function traverse(value, seen = new Set()) {

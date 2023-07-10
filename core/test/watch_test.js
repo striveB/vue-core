@@ -14,11 +14,14 @@ watch(
   () => obj.num,
   (newVal, oldVal) => {
     console.log("新num：", newVal, ",旧num:", oldVal);
+  },
+  {
+    // 立即执行
+    immediate: true,
   }
 );
 
 function test() {
   obj.num = 10;
-  obj.num = 11;
 }
 test();
