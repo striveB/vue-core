@@ -71,8 +71,6 @@ const trigger = function (target, key) {
       effectFn();
     }
   });
-  // console.log(activeEffect.deps);
-  // effects.forEach((fn) => fn());
 };
 
 function computed(getter) {
@@ -95,7 +93,6 @@ function computed(getter) {
     // 当读取value时才执行effectFn
     get value() {
       if (dirty) {
-        console.log("重新计算了");
         value = effectFn();
         dirty = false;
       }
@@ -115,11 +112,21 @@ function watch(source, callback, options = {}) {
   }
   let oldValue, newValue;
 
+  // 用来存储用户注册的过期回调
+  let clearup;
+
+  function onInvalidate(fn) {
+    clearup = fn;
+  }
+
   // 提取scheduler调度函数为一个独立的job函数
   const job = () => {
     // 调度器重执行effectFn得到的就是新值
     newValue = effectFn();
-    callback(newValue, oldValue);
+    if (clearup) {
+      clearup();
+    }
+    callback(newValue, oldValue, onInvalidate);
     // 传递过去之后更新一下旧值
     oldValue = newValue;
   };
