@@ -50,7 +50,6 @@ const track = function (target, key) {
   // 当读取属性时将effect存储到桶中
   deps.add(activeEffect);
   activeEffect.deps.push(deps);
-  // console.log(bucket);
 };
 const trigger = function (target, key) {
   const depsMap = bucket.get(target);
