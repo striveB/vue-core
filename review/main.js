@@ -1,33 +1,35 @@
 // 原始数据
-const data = { text: "hello world!" };
+const data = { isOk: true, text: "hello world!" };
 
 // 用一个全局变量存储被注册的副作用函数
 let activeEffect;
 
 // effect函数用户注册副作用函数
 function effect(fn) {
-  // 当调用effect函数时，将传入的函数赋值给全局变量activeEffect
-  activeEffect = fn;
-  fn();
+  const effectFn = () => {
+    cleanup(effectFn);
+    // 当调用effect函数时，将传入的函数赋值给全局变量activeEffect
+    activeEffect = effectFn;
+    fn();
+  };
+  // 用来存储所有与该副作用函数相关联的依赖集合
+  effectFn.deps = [];
+  effectFn();
+}
+
+//清除之前的副作用函数关系
+function cleanup(effectFn) {
+  for (let i = 0; i < effectFn.deps.length; i++) {
+    const deps = effectFn.deps[i];
+    // 将effectFn从deps中删除
+    deps.delete(effectFn);
+  }
+  // 最后需要重置effectFn.deps数组
+  effectFn.deps.length = 0;
 }
 
 // 存储副作用函数的桶，数据结构：WeakMap<target, Map<key, Set()<effects>>>
 const bucket = new WeakMap();
-
-// 对原始数据进行代理
-const obj = new Proxy(data, {
-  // 拦截读取操作
-  get(target, key) {
-    track(target, key);
-    return target[key];
-  },
-  // 拦截设置操作
-  set(target, key, value) {
-    target[key] = value;
-    trigger(target, key);
-    return true;
-  },
-});
 
 // 收集副作用
 function track(target, key) {
@@ -47,6 +49,10 @@ function track(target, key) {
   }
   // 将副作用函数effect存入effects中
   effects.add(activeEffect);
+
+  // 将其添加到副作用函数的依赖集合中
+  activeEffect.deps.push(effects);
+  console.log(activeEffect.deps);
 }
 
 // 触发副作用
@@ -56,13 +62,33 @@ function trigger(target, key) {
   if (!depsMap) return true;
   // 根据key从despMap中拿到effects，他也是一个Set类型，结构：Set()<effects>
   let effects = depsMap.get(key);
-  // 执行桶中的副作用函数
-  effects && effects.forEach((effect) => effect());
+
+  // 执行桶中的副作用函数，一下防止set无限循环
+  const effectsToRun = new Set(effects);
+  effectsToRun.forEach((effectFn) => effectFn());
+  // effects && effects.forEach((effect) => effect());
 }
 
-effect(() => {
-  document.body.innerText = obj.text;
+// 对原始数据进行代理
+const obj = new Proxy(data, {
+  // 拦截读取操作
+  get(target, key) {
+    track(target, key);
+    return target[key];
+  },
+  // 拦截设置操作
+  set(target, key, value) {
+    target[key] = value;
+    trigger(target, key);
+    return true;
+  },
 });
+
+effect(() => {
+  console.log("执行了！");
+  document.body.innerText = obj.isOk ? obj.text : "isNot";
+});
+obj.isOk = false;
 setTimeout(() => {
   obj.text = "hello proxy!";
 }, 1000);
