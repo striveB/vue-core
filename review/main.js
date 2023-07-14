@@ -4,13 +4,22 @@ const data = { isOk: true, text: "hello world!" };
 // 用一个全局变量存储被注册的副作用函数
 let activeEffect;
 
+// effect栈
+const effectStack = [];
+
 // effect函数用户注册副作用函数
 function effect(fn) {
   const effectFn = () => {
     cleanup(effectFn);
     // 当调用effect函数时，将传入的函数赋值给全局变量activeEffect
     activeEffect = effectFn;
+    // 将effectFn存入effectStack中
+    effectStack.push(effectFn);
     fn();
+    // 将effectFn从effectStack中删除
+    effectStack.pop();
+    // 将activeEffect置为栈顶的effectFn
+    activeEffect = effectStack[effectStack.length - 1];
   };
   // 用来存储所有与该副作用函数相关联的依赖集合
   effectFn.deps = [];
@@ -52,7 +61,6 @@ function track(target, key) {
 
   // 将其添加到副作用函数的依赖集合中
   activeEffect.deps.push(effects);
-  console.log(activeEffect.deps);
 }
 
 // 触发副作用
@@ -84,11 +92,24 @@ const obj = new Proxy(data, {
   },
 });
 
+// 测试分支切换清除
+// effect(() => {
+//   console.log("执行了！");
+//   document.body.innerText = obj.isOk ? obj.text : "isNot";
+// });
+// obj.isOk = false;
+// setTimeout(() => {
+//   obj.text = "hello proxy!";
+// }, 1000);
+
+// 测试effect嵌套
+let temp1, temp2;
 effect(() => {
-  console.log("执行了！");
-  document.body.innerText = obj.isOk ? obj.text : "isNot";
+  console.log("effectFn1 执行！");
+  effect(() => {
+    console.log("effectFn2 执行！");
+    temp2 = obj.text;
+  });
+  temp1 = obj.isOk;
 });
 obj.isOk = false;
-setTimeout(() => {
-  obj.text = "hello proxy!";
-}, 1000);
