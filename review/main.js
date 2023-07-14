@@ -1,5 +1,5 @@
 // 原始数据
-const data = { isOk: true, text: "hello world!" };
+const data = { num: 0, isOk: true, text: "hello world!" };
 
 // 用一个全局变量存储被注册的副作用函数
 let activeEffect;
@@ -58,7 +58,6 @@ function track(target, key) {
   }
   // 将副作用函数effect存入effects中
   effects.add(activeEffect);
-
   // 将其添加到副作用函数的依赖集合中
   activeEffect.deps.push(effects);
 }
@@ -73,8 +72,12 @@ function trigger(target, key) {
 
   // 执行桶中的副作用函数，一下防止set无限循环
   const effectsToRun = new Set(effects);
-  effectsToRun.forEach((effectFn) => effectFn());
-  // effects && effects.forEach((effect) => effect());
+  effectsToRun.forEach((effectFn) => {
+    // 如果trigger触发的函数与当前正在执行的函数相同，则不触发
+    if (effectFn !== activeEffect) {
+      effectFn();
+    }
+  });
 }
 
 // 对原始数据进行代理
@@ -111,5 +114,7 @@ effect(() => {
     temp2 = obj.text;
   });
   temp1 = obj.isOk;
+  obj.num += 1;
 });
-obj.isOk = false;
+obj.num = 10;
+console.log(obj.num);
