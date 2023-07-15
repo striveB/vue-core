@@ -8,7 +8,7 @@ let activeEffect;
 const effectStack = [];
 
 // effect函数用户注册副作用函数
-function effect(fn) {
+function effect(fn, options = {}) {
   const effectFn = () => {
     cleanup(effectFn);
     // 当调用effect函数时，将传入的函数赋值给全局变量activeEffect
@@ -21,9 +21,11 @@ function effect(fn) {
     // 将activeEffect置为栈顶的effectFn
     activeEffect = effectStack[effectStack.length - 1];
   };
+  effectFn.options = options;
   // 用来存储所有与该副作用函数相关联的依赖集合
   effectFn.deps = [];
   effectFn();
+  return effectFn;
 }
 
 //清除之前的副作用函数关系
@@ -75,7 +77,11 @@ function trigger(target, key) {
   effectsToRun.forEach((effectFn) => {
     // 如果trigger触发的函数与当前正在执行的函数相同，则不触发
     if (effectFn !== activeEffect) {
-      effectFn();
+      if (effectFn.options.scheduler) {
+        effectFn.options.scheduler(effectFn);
+      } else {
+        effectFn();
+      }
     }
   });
 }
@@ -95,6 +101,24 @@ const obj = new Proxy(data, {
   },
 });
 
+// 定义一个消息队列
+const jobQueue = new Set();
+// 使用promise.resolve()创建一个promise实例，我们用它讲一个任务添加到微任务队列中
+const p = Promise.resolve();
+
+// 一个标志代表是否正在刷新队列
+let isFlushing = false;
+
+function flushJob() {
+  if (isFlushing) return;
+  isFlushing = true;
+  p.then(() => {
+    jobQueue.forEach((job) => job());
+  }).finally(() => {
+    isFlushing = false;
+  });
+}
+
 // 测试分支切换清除
 // effect(() => {
 //   console.log("执行了！");
@@ -106,15 +130,30 @@ const obj = new Proxy(data, {
 // }, 1000);
 
 // 测试effect嵌套
-let temp1, temp2;
-effect(() => {
-  console.log("effectFn1 执行！");
-  effect(() => {
-    console.log("effectFn2 执行！");
-    temp2 = obj.text;
-  });
-  temp1 = obj.isOk;
-  obj.num += 1;
-});
-obj.num = 10;
-console.log(obj.num);
+// let temp1, temp2;
+// effect(() => {
+//   console.log("effectFn1 执行！");
+//   effect(() => {
+//     console.log("effectFn2 执行！");
+//     temp2 = obj.text;
+//   });
+//   temp1 = obj.isOk;
+//   obj.num += 1;
+// });
+// obj.num = 10;
+// console.log(obj.num);
+
+// 调度器测试
+let effectFn = effect(
+  () => {
+    console.log("num", obj.num);
+  },
+  {
+    scheduler: (fn) => {
+      jobQueue.add(fn);
+      flushJob();
+    },
+  }
+);
+obj.num++;
+obj.num++;
