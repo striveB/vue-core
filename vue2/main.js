@@ -16,3 +16,10 @@ setTimeout(() => {
 setTimeout(() => {
   obj.age = 33;
 }, 2500);
+
+let arr = [];
+
+new Observer(arr);
+arr.push(123);
+arr.unshift(333);
+console.log(arr);

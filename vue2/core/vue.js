@@ -41,10 +41,39 @@ export class Watcher {
     this.cb.call(this.vm, this.value, oldValue);
   }
 }
+
+// 拦截array方法
+const arrayProto = Array.prototype;
+const arrayMethods = Object.create(arrayProto);
+console.log(arrayMethods);
+const methods = [
+  'push',
+  'pop',
+  'shift',
+  'unshift',
+  'splice',
+  'sort',
+  'reverse',
+];
+methods.forEach((method) => {
+  let original = arrayProto[method];
+  Object.defineProperty(arrayMethods, method, {
+    value: function mutator(...args) {
+      console.log('执行了！！');
+      return original.apply(this, args);
+    },
+    enumerable: false,
+    writable: true,
+    configurable: true,
+  });
+});
+
 export class Observer {
   constructor(value) {
     this.value = value;
-    if (!Array.isArray(value)) {
+    if (Array.isArray(value)) {
+      this.value.__proto__ = arrayMethods;
+    } else {
       this.walk(value);
     }
   }
@@ -65,11 +94,9 @@ function defineReactive(data, key, val) {
     configurable: true,
     get: function () {
       dep.depend();
-      console.log('get');
       return val;
     },
     set: function (newVal) {
-      console.log('set', dep, dep.subs.length);
       if (newVal === val) return;
       val = newVal;
       dep.notify();
