@@ -10,3 +10,10 @@ export function parsePath(path) {
     return obj;
   };
 }
+
+export function isObj(obj) {
+  return obj !== null && typeof obj === 'object';
+}
+export function hasOwn(obj, key) {
+  return Object.prototype.hasOwnProperty.call(obj, key);
+}
